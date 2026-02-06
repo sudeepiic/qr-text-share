@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 
+const DEBOUNCE_MS = 1500;
+
 export default function SessionPage() {
   const params = useParams();
   const sessionId = params.id as string;
@@ -12,7 +14,9 @@ export default function SessionPage() {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [sessionExists, setSessionExists] = useState<boolean | null>(null);
+  const [countdown, setCountdown] = useState(0);
   const submitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const checkSession = useCallback(async () => {
     try {
@@ -62,29 +66,50 @@ export default function SessionPage() {
     setSubmitted(false);
   };
 
-  // Auto-submit with debouncing
+  // Auto-submit with debouncing and countdown
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     setInputText(value);
 
-    // Clear existing timeout
+    // Clear existing timeout and interval
     if (submitTimeoutRef.current) {
       clearTimeout(submitTimeoutRef.current);
     }
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+    }
 
-    // Auto-submit after 1 second of no typing (only if there's content)
+    // Auto-submit after debounce delay (only if there's content)
     if (value.trim()) {
+      setCountdown(Math.ceil(DEBOUNCE_MS / 1000));
+
       submitTimeoutRef.current = setTimeout(() => {
         handleSubmit();
+      }, DEBOUNCE_MS);
+
+      // Countdown visual feedback
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(countdownIntervalRef.current!);
+            return 0;
+          }
+          return prev - 1;
+        });
       }, 1000);
+    } else {
+      setCountdown(0);
     }
   };
 
-  // Cleanup timeout on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (submitTimeoutRef.current) {
         clearTimeout(submitTimeoutRef.current);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
       }
     };
   }, []);
@@ -203,8 +228,10 @@ export default function SessionPage() {
             <p className="text-xs text-gray-700">
               {inputText.length} chars
             </p>
-            {inputText.trim() && !isSubmitting && (
-              <p className="text-xs text-indigo-700">Auto-sending...</p>
+            {inputText.trim() && !isSubmitting && countdown > 0 && (
+              <p className="text-xs text-indigo-700">
+                Sending in {countdown}s...
+              </p>
             )}
           </div>
         </div>
