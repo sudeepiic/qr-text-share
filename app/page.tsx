@@ -18,6 +18,7 @@ export default function HomePage() {
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Cleanup EventSource on unmount
   useEffect(() => {
@@ -58,11 +59,13 @@ export default function HomePage() {
 
   const generateQRCode = useCallback(async () => {
     // Use isRegenerating for subsequent QR generations
-    if (sessionInfo) {
-      setIsRegenerating(true);
-    } else {
+    const isFirstLoad = !hasInitializedRef.current;
+    if (isFirstLoad) {
       setIsLoading(true);
+    } else {
+      setIsRegenerating(true);
     }
+    hasInitializedRef.current = true;
     setError('');
     setReceivedText('');
     setCopied(false);
@@ -97,12 +100,13 @@ export default function HomePage() {
       setIsLoading(false);
       setIsRegenerating(false);
     }
-  }, [connectToStream, sessionInfo]);
+  }, [connectToStream]);
 
   // Auto-generate QR code on mount
   useEffect(() => {
     generateQRCode();
-  }, [generateQRCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const copyToClipboard = async () => {
     if (receivedText) {
