@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
-import { MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Clock } from 'lucide-react';
+import { MessageSquare, AlertCircle, Loader2, Clock } from 'lucide-react';
 
 const DEBOUNCE_MS = 300;
 
@@ -12,7 +12,6 @@ export default function SessionPage() {
 
   const [inputText, setInputText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [sessionExists, setSessionExists] = useState<boolean | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -57,7 +56,7 @@ export default function SessionPage() {
         throw new Error(data.message || 'Failed to submit text');
       }
 
-      setSubmitted(true);
+      // Clear input after successful send
       setInputText('');
       pendingValueRef.current = '';
       setCountdown(0);
@@ -67,10 +66,6 @@ export default function SessionPage() {
       setIsSubmitting(false);
     }
   }, [sessionId, inputText]);
-
-  const handleSendMore = () => {
-    setSubmitted(false);
-  };
 
   // Auto-submit with debouncing and countdown
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -144,32 +139,6 @@ export default function SessionPage() {
           <p className="text-gray-700 text-sm">
             Scan a new QR code from the desktop app.
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Success state
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 bg-green-100 rounded-full mb-4">
-            <CheckCircle className="h-7 w-7 text-green-700" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900 mb-2">
-            Sent Successfully
-          </h1>
-          <p className="text-gray-700 text-sm mb-6">
-            Your text has been shared to the desktop.
-          </p>
-          <button
-            onClick={handleSendMore}
-            className="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors duration-200 focus-ring-aa"
-          >
-            <Send className="h-4 w-4" />
-            Send More
-          </button>
         </div>
       </div>
     );
