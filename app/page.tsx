@@ -13,6 +13,7 @@ export default function HomePage() {
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | null>(null);
   const [receivedText, setReceivedText] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState<string>('');
   const [copied, setCopied] = useState(false);
@@ -56,7 +57,12 @@ export default function HomePage() {
   }, []);
 
   const generateQRCode = useCallback(async () => {
-    setIsLoading(true);
+    // Use isRegenerating for subsequent QR generations
+    if (sessionInfo) {
+      setIsRegenerating(true);
+    } else {
+      setIsLoading(true);
+    }
     setError('');
     setReceivedText('');
     setCopied(false);
@@ -89,8 +95,9 @@ export default function HomePage() {
       setError(err instanceof Error ? err.message : 'Failed to generate QR code');
     } finally {
       setIsLoading(false);
+      setIsRegenerating(false);
     }
-  }, [connectToStream]);
+  }, [connectToStream, sessionInfo]);
 
   // Auto-generate QR code on mount
   useEffect(() => {
@@ -165,31 +172,36 @@ export default function HomePage() {
                 </div>
                 <button
                   onClick={generateQRCode}
-                  disabled={isLoading}
+                  disabled={isRegenerating}
                   className="inline-flex items-center gap-1.5 text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200 focus-ring-aa"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${isRegenerating ? 'animate-spin' : ''}`} />
                   New
                 </button>
               </div>
 
-              <div className="flex justify-center mb-6">
-                <div className="bg-white p-4 rounded-xl border-2 border-gray-300 shadow-inner">
+              <div className="flex justify-center mb-6 relative">
+                <div className="bg-white p-4 rounded-xl border-2 border-gray-300 shadow-inner transition-opacity duration-300">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={sessionInfo.qrCodeDataUrl}
                     alt="QR Code - Scan with your phone camera to connect"
                     width={250}
                     height={250}
-                    className="w-[220px] h-[220px]"
+                    className={`w-[220px] h-[220px] ${isRegenerating ? 'opacity-30' : 'opacity-100'}`}
                   />
                 </div>
+                {isRegenerating && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="h-10 w-10 text-indigo-700 animate-spin" />
+                  </div>
+                )}
               </div>
 
               <div className="text-center space-y-3">
                 <div>
                   <p className="text-sm text-gray-700 mb-1.5 font-medium">Session ID</p>
-                  <code className="bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono text-gray-900 border border-gray-300">
+                  <code className="bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono text-gray-900 border border-gray-300 transition-opacity duration-300">
                     {sessionInfo.sessionId}
                   </code>
                 </div>
