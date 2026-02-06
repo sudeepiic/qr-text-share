@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
+import { MessageSquare, Send, CheckCircle, AlertCircle, Loader2, Clock } from 'lucide-react';
 
 const DEBOUNCE_MS = 1500;
 
@@ -55,6 +56,7 @@ export default function SessionPage() {
 
       setSubmitted(true);
       setInputText('');
+      setCountdown(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -119,7 +121,7 @@ export default function SessionPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-700 mb-3"></div>
+          <Loader2 className="h-10 w-10 text-indigo-700 animate-spin mx-auto mb-3" />
         </div>
       </div>
     );
@@ -129,21 +131,11 @@ export default function SessionPage() {
   if (sessionExists === false) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-md p-6 max-w-md w-full text-center">
-          <div className="mb-4">
-            <svg
-              className="mx-auto h-12 w-12 text-red-700"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="mb-5">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-red-100 rounded-full mb-4">
+              <AlertCircle className="h-7 w-7 text-red-700" />
+            </div>
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">
             Session Not Found
@@ -160,34 +152,23 @@ export default function SessionPage() {
   if (submitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-md p-6 max-w-md w-full text-center">
-          <div className="mb-4">
-            <div className="mx-auto h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-              <svg
-                className="h-6 w-6 text-green-700"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+          <div className="mb-5">
+            <div className="inline-flex items-center justify-center w-14 h-14 bg-green-100 rounded-full">
+              <CheckCircle className="h-7 w-7 text-green-700" />
             </div>
           </div>
           <h1 className="text-xl font-bold text-gray-900 mb-2">
-            Sent!
+            Sent Successfully
           </h1>
-          <p className="text-gray-700 text-sm mb-4">
-            Text shared to desktop
+          <p className="text-gray-700 text-sm mb-6">
+            Your text has been shared to the desktop.
           </p>
           <button
             onClick={handleSendMore}
-            className="bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2 px-6 rounded-lg transition-colors duration-200 focus-ring-aa text-sm"
+            className="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-semibold py-2.5 px-6 rounded-lg transition-colors duration-200 focus-ring-aa"
           >
+            <Send className="h-4 w-4" />
             Send More
           </button>
         </div>
@@ -198,14 +179,20 @@ export default function SessionPage() {
   // Input form state - compact with auto-submit
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-md p-4 max-w-md w-full">
-        {/* Header - Compact */}
-        <div className="text-center mb-3">
+      <div className="bg-white rounded-2xl shadow-lg p-6 max-w-md w-full">
+        {/* Header */}
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-12 h-12 bg-indigo-100 rounded-full mb-3">
+            <MessageSquare className="h-6 w-6 text-indigo-700" />
+          </div>
           <h1 className="text-xl font-bold text-gray-900">
             Share Text
           </h1>
           {isSubmitting && (
-            <p className="text-xs text-gray-700 mt-1">Sending...</p>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <Loader2 className="h-3 w-3 text-indigo-700 animate-spin" />
+              <p className="text-xs text-gray-700">Sending...</p>
+            </div>
           )}
         </div>
 
@@ -218,34 +205,35 @@ export default function SessionPage() {
             id="text"
             value={inputText}
             onChange={handleChange}
-            placeholder="Type here... auto-sends when you stop"
-            className="w-full px-3 py-2.5 border-2 border-gray-400 rounded-lg focus:ring-2 focus:ring-indigo-700 focus:border-indigo-700 resize-none bg-white text-gray-900 placeholder:text-gray-500 text-sm"
-            rows={5}
+            placeholder="Type or paste your text here..."
+            className="w-full px-4 py-3 border-2 border-gray-400 rounded-xl focus:ring-2 focus:ring-indigo-700 focus:border-indigo-700 resize-none bg-white text-gray-900 placeholder:text-gray-500 text-base"
+            rows={6}
             disabled={isSubmitting}
             autoFocus
           />
-          <div className="flex justify-between items-center mt-2">
-            <p className="text-xs text-gray-700">
-              {inputText.length} chars
+          <div className="flex justify-between items-center mt-2.5">
+            <p className="text-sm text-gray-700">
+              {inputText.length} character{inputText.length !== 1 ? 's' : ''}
             </p>
             {inputText.trim() && !isSubmitting && countdown > 0 && (
-              <p className="text-xs text-indigo-700">
-                Sending in {countdown}s...
-              </p>
+              <div className="flex items-center gap-1.5 text-sm text-indigo-700 font-medium">
+                <Clock className="h-3.5 w-3.5" />
+                Sending in {countdown}s
+              </div>
             )}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border-2 border-red-400 rounded-lg p-2 mt-3" role="alert">
-            <p className="text-red-900 text-xs font-medium">{error}</p>
+          <div className="bg-red-50 border-2 border-red-400 rounded-xl p-3 mt-4" role="alert">
+            <p className="text-red-900 text-sm font-medium">{error}</p>
           </div>
         )}
 
         {/* Session info */}
-        <div className="mt-3 pt-3 border-t border-gray-300">
-          <p className="text-xs text-gray-700 text-center">
-            Session: <code className="bg-gray-100 px-2 py-0.5 rounded text-gray-900 border border-gray-300">{sessionId}</code>
+        <div className="mt-5 pt-4 border-t border-gray-300">
+          <p className="text-sm text-gray-700 text-center">
+            Session: <code className="bg-gray-100 px-2 py-1 rounded text-gray-900 border border-gray-300">{sessionId}</code>
           </p>
         </div>
       </div>

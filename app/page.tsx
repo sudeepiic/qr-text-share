@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { QrCode, RefreshCw, Copy, Check, Wifi, WifiOff, Loader2 } from 'lucide-react';
 
 interface SessionInfo {
   sessionId: string;
@@ -26,15 +27,39 @@ export default function HomePage() {
     };
   }, []);
 
-  // Auto-generate QR code on mount
-  useEffect(() => {
-    generateQRCode();
+  const connectToStream = useCallback((sessionId: string) => {
+    setIsListening(true);
+
+    const eventSource = new EventSource(`/api/session/${sessionId}/stream`);
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'connected') {
+          console.log('Connected to session:', data.sessionId);
+        } else if (data.type === 'text' || data.text) {
+          setReceivedText(data.text);
+        }
+      } catch {
+        console.error('Error parsing SSE message');
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE connection error:', err);
+      setIsListening(false);
+      eventSource.close();
+    };
+
+    eventSourceRef.current = eventSource;
   }, []);
 
-  const generateQRCode = async () => {
+  const generateQRCode = useCallback(async () => {
     setIsLoading(true);
     setError('');
     setReceivedText('');
+    setCopied(false);
 
     // Close any existing EventSource
     if (eventSourceRef.current) {
@@ -65,36 +90,12 @@ export default function HomePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [connectToStream]);
 
-  const connectToStream = (sessionId: string) => {
-    setIsListening(true);
-
-    const eventSource = new EventSource(`/api/session/${sessionId}/stream`);
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'connected') {
-          console.log('Connected to session:', data.sessionId);
-        } else if (data.type === 'text' || data.text) {
-          setReceivedText(data.text);
-          // Optional: Show a notification or highlight the text
-        }
-      } catch {
-        console.error('Error parsing SSE message');
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error('SSE connection error:', err);
-      setIsListening(false);
-      eventSource.close();
-    };
-
-    eventSourceRef.current = eventSource;
-  };
+  // Auto-generate QR code on mount
+  useEffect(() => {
+    generateQRCode();
+  }, [generateQRCode]);
 
   const copyToClipboard = async () => {
     if (receivedText) {
@@ -108,121 +109,148 @@ export default function HomePage() {
     }
   };
 
-  const resetSession = () => {
-    setSessionInfo(null);
-    setReceivedText('');
-    setIsListening(false);
-    setError('');
-    setCopied(false);
-
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <div className="container mx-auto px-4 py-4">
-        {/* Header - Compact */}
-        <header className="text-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
-            QR Text Share
-          </h1>
+      <div className="container mx-auto px-6 py-8">
+        {/* Header */}
+        <header className="text-center mb-10">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <QrCode className="h-8 w-8 text-indigo-700" />
+            <h1 className="text-3xl font-bold text-gray-900">
+              QR Text Share
+            </h1>
+          </div>
+          <p className="text-gray-700">
+            Share text between devices instantly
+          </p>
         </header>
 
         {/* Loading State */}
         {isLoading && !sessionInfo && (
-          <div className="flex items-center justify-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-700"></div>
+          <div className="flex items-center justify-center py-20">
+            <div className="flex flex-col items-center gap-3">
+              <Loader2 className="h-10 w-10 text-indigo-700 animate-spin" />
+              <p className="text-gray-700">Generating QR code...</p>
+            </div>
           </div>
         )}
 
         {/* Error State */}
         {error && !sessionInfo && (
-          <div className="text-center py-8">
-            <p className="text-red-700 text-sm font-medium" role="alert">{error}</p>
+          <div className="text-center py-12">
+            <p className="text-red-700 font-medium mb-4" role="alert">{error}</p>
             <button
               onClick={generateQRCode}
-              className="mt-4 text-indigo-700 hover:text-indigo-900 underline text-sm"
+              className="inline-flex items-center gap-2 bg-indigo-700 hover:bg-indigo-800 text-white font-medium py-2.5 px-6 rounded-lg transition-colors duration-200 focus-ring-aa"
             >
+              <RefreshCw className="h-4 w-4" />
               Try again
             </button>
           </div>
         )}
 
         {/* Side-by-side layout */}
-        {sessionInfo && (
-          <main className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl mx-auto">
+        {sessionInfo && !isLoading && (
+          <main className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
             {/* QR Code Card */}
-            <div className="bg-white rounded-xl shadow-md p-4">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Scan to Connect
-                </h2>
+            <div className="bg-white rounded-2xl shadow-lg p-8">
+              <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-2">
+                  <QrCode className="h-5 w-5 text-indigo-700" />
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Scan to Connect
+                  </h2>
+                </div>
                 <button
-                  onClick={resetSession}
-                  className="text-gray-700 hover:text-gray-900 text-xs underline focus-ring-aa"
+                  onClick={generateQRCode}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-1.5 text-gray-700 hover:text-indigo-700 hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium py-2 px-3 rounded-lg transition-colors duration-200 focus-ring-aa"
                 >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   New
                 </button>
               </div>
 
-              <div className="flex justify-center mb-3">
-                <div className="bg-white p-2 rounded-lg border-2 border-gray-400">
+              <div className="flex justify-center mb-6">
+                <div className="bg-white p-4 rounded-xl border-2 border-gray-300 shadow-inner">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={sessionInfo.qrCodeDataUrl}
                     alt="QR Code - Scan with your phone camera to connect"
-                    width={200}
-                    height={200}
-                    className="w-[180px] h-[180px]"
+                    width={250}
+                    height={250}
+                    className="w-[220px] h-[220px]"
                   />
                 </div>
               </div>
 
-              <div className="text-center">
-                <p className="text-xs text-gray-700 mb-1 font-medium">Session:</p>
-                <code className="bg-gray-100 px-2 py-1 rounded text-xs font-mono text-gray-900 border border-gray-300">
-                  {sessionInfo.sessionId}
-                </code>
-                <p className="text-xs text-gray-700 mt-2 font-medium">
+              <div className="text-center space-y-3">
+                <div>
+                  <p className="text-sm text-gray-700 mb-1.5 font-medium">Session ID</p>
+                  <code className="bg-gray-100 px-3 py-1.5 rounded-lg text-sm font-mono text-gray-900 border border-gray-300">
+                    {sessionInfo.sessionId}
+                  </code>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-sm font-medium">
                   {isListening ? (
-                    <span className="text-green-700">● Listening</span>
+                    <>
+                      <span className="flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-green-500 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-600"></span>
+                      </span>
+                      <span className="text-green-700">Listening for text</span>
+                      <Wifi className="h-4 w-4 text-green-700" />
+                    </>
                   ) : (
-                    <span className="text-amber-700">○ Connecting...</span>
+                    <>
+                      <WifiOff className="h-4 w-4 text-amber-700" />
+                      <span className="text-amber-700">Connecting...</span>
+                    </>
                   )}
-                </p>
+                </div>
               </div>
             </div>
 
             {/* Received Text Card */}
-            <div className="bg-white rounded-xl shadow-md p-4 flex flex-col">
-              <div className="flex justify-between items-center mb-3">
-                <h2 className="text-lg font-semibold text-gray-900">
+            <div className="bg-white rounded-2xl shadow-lg p-8 flex flex-col">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">
                   Received Text
                 </h2>
                 {receivedText && (
                   <button
                     onClick={copyToClipboard}
-                    className="bg-gray-200 hover:bg-gray-300 text-gray-900 text-xs font-medium py-1.5 px-3 rounded-lg transition-colors duration-200 focus-ring-aa"
+                    className="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900 text-sm font-medium py-2 px-4 rounded-lg transition-colors duration-200 focus-ring-aa"
                   >
-                    {copied ? '✓ Copied!' : 'Copy'}
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4 text-green-700" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy
+                      </>
+                    )}
                   </button>
                 )}
               </div>
 
-              <div className="flex-1 min-h-[200px]">
+              <div className="flex-1 min-h-[280px]">
                 {receivedText ? (
-                  <div className="bg-gray-50 rounded-lg p-3 h-full border border-gray-200 overflow-auto">
-                    <p className="text-gray-900 whitespace-pre-wrap break-words text-sm">
+                  <div className="bg-gray-50 rounded-xl p-5 h-full border border-gray-200 overflow-auto">
+                    <p className="text-gray-900 whitespace-pre-wrap break-words text-base leading-relaxed">
                       {receivedText}
                     </p>
                   </div>
                 ) : (
-                  <div className="bg-gray-50 rounded-lg p-3 h-full flex items-center justify-center border border-gray-200">
-                    <p className="text-gray-700 text-center text-sm">
-                      Waiting for text...
+                  <div className="bg-gray-50 rounded-xl p-5 h-full flex flex-col items-center justify-center border border-gray-200">
+                    <p className="text-gray-700 text-center mb-2">
+                      Waiting for text from your phone...
+                    </p>
+                    <p className="text-gray-500 text-center text-sm">
+                      Scan the QR code and start typing
                     </p>
                   </div>
                 )}
