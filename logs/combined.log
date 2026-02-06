@@ -1,0 +1,10 @@
+{
+  message: 'No proxy URL provided, using direct connection',
+  level: 'info',
+  timestamp: '2026-02-06 20:32:25'
+}
+{
+  message: 'SearXNG + Crawl4AI MCP Server started with proxy support',
+  level: 'info',
+  timestamp: '2026-02-06 20:32:25'
+}
