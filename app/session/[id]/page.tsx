@@ -56,9 +56,6 @@ export default function SessionPage() {
         throw new Error(data.message || 'Failed to submit text');
       }
 
-      // Clear input after successful send
-      setInputText('');
-      pendingValueRef.current = '';
       setCountdown(0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
