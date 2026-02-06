@@ -32,8 +32,6 @@ export default function HomePage() {
   }, []);
 
   const generateQRCode = async () => {
-
-  const generateQRCode = async () => {
     setIsLoading(true);
     setError('');
     setReceivedText('');
